@@ -32,7 +32,7 @@ struct ChatView: View {
       Text("Something went wrong. Please try again later!")
     case .loaded(let groups):
       ScrollView {
-        LazyVStack(spacing: 8) {
+        LazyVStack(spacing: 16) {
           ForEach(groups, id: \.header) { group in
             Text(group.header)
             ForEach(group.messages) { message in
@@ -54,17 +54,34 @@ private struct ChatMessageView: View {
   }
   
   var body: some View {
-    HStack {
-      Spacer()
-      Text(message.text)
+    HStack(spacing: 16) {
+      switch message.sender {
+      case .you:
+        Spacer()
+        Text(message.text)
+          .padding()
+          .background(
+            RoundedRectangle(cornerRadius: 16)
+              .fill(Color.blue)
+          )
+          .shadow(color: .gray.opacity(0.5), radius: 5, x: 0, y: 2)
+          .font(.title2)
+          .foregroundStyle(.white)
+      case .other(let sender):
+        Image(systemName: "person.circle.fill")
+          .scaleEffect(1.5)
+        Text(message.text)
+          .padding()
+          .background(
+            RoundedRectangle(cornerRadius: 16)
+              .fill(Color(UIColor(red: 240/255, green: 240/255, blue: 240/255, alpha: 1.0)))
+          )
+          .shadow(color: .gray.opacity(0.5), radius: 5, x: 0, y: 2)
+          .font(.title2)
+        Spacer()
+      }
+      
     }
-    .padding()
-    .background(
-      RoundedRectangle(cornerRadius: 16)
-        .fill(Color.gray)
-    )
-    .shadow(color: .gray.opacity(0.5), radius: 5, x: 0, y: 2)
-    .font(.title)
   }
 }
 
@@ -81,6 +98,10 @@ private struct ChatMessageView: View {
     ]),
     .init(header: "31 december", messages: [
       Message(text: "Happy new year!", sender: .other("Alice"), state: .sent, time: "23:58")
+    ]),
+    .init(header: "Today", messages: [
+      Message(text: "Hello guys! Do you want to do something fun today like maybe visit an owl sanctuary?", sender: .you, state: .sent, time: "07:15"),
+      Message(text: "For sure! That sounds like an excellent idea!", sender: .other("Bob"), state: .sent, time: "07:16")
     ])
   ])
   ChatView(viewModel: .mocked(state: state))
