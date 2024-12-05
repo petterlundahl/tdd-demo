@@ -10,21 +10,26 @@ final class ChatViewModel: ObservableObject {
   
   enum ViewState: Equatable {
     case idle
-    case loading
     case noContent
-    case error
-    case loaded([MessageGroup])
+    case active(LoadingState, [MessageGroup])
     
     struct MessageGroup: Equatable {
       let header: String
       let messages: [Message]
+    }
+    
+    enum LoadingState: Equatable {
+      case canLoadMore
+      case loading
+      case error(String)
+      case loadedEverything
     }
   }
   
   @Published private(set) var state: ViewState = .idle
   @Published var typingMessage: String = ""
   
-  func load() {
+  func loadNext() {
     //
   }
   
@@ -38,9 +43,10 @@ final class ChatViewModel: ObservableObject {
 }
 
 extension ChatViewModel {
-  static func mocked(state: ViewState) -> ChatViewModel {
+  static func mocked(state: ViewState, typing: String = "") -> ChatViewModel {
     let vm = ChatViewModel()
     vm.state = state
+    vm.typingMessage = typing
     return vm
   }
 }

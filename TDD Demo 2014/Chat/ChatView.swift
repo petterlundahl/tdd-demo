@@ -18,20 +18,11 @@ struct ChatView: View {
     VStack {
       switch viewModel.state {
       case .idle:
-        Color.clear.onAppear { viewModel.load() }
-      case .loading:
-        VStack {
-          Spacer()
-          ProgressView()
-            .progressViewStyle(CircularProgressViewStyle())
-            .scaleEffect(2)
-          Spacer()
-        }
+        Color.clear.onAppear { viewModel.loadNext() }
       case .noContent:
-        Text("You don't have any  yet!")
-      case .error:
-        Text("Something went wrong. Please try again later!")
-      case .loaded(let groups):
+        Text("This chat is empty! Write the first message")
+      case .active(let loadingState, let groups):
+        LoadingView(state: loadingState) { viewModel.loadNext() }
         ScrollView {
           LazyVStack(spacing: 16) {
             ForEach(groups, id: \.header) { group in
@@ -50,13 +41,41 @@ struct ChatView: View {
     HStack {
       TextField("Message...", text: $viewModel.typingMessage)
         .textFieldStyle(RoundedBorderTextFieldStyle())
-        .frame(minHeight: CGFloat(30))
+        .frame(minHeight: CGFloat(40))
+        .lineLimit(0)
       Button(action: { viewModel.sendMessage() }) {
         Text("Send")
       }
     }
     .frame(minHeight: CGFloat(50))
     .padding()
+  }
+}
+
+private struct LoadingView: View {
+  let state: ChatViewModel.ViewState.LoadingState
+  let reload: () -> Void
+  
+  var body: some View {
+    switch state {
+    case .canLoadMore:
+      Button("Load more") {
+        reload()
+      }
+    case .loading:
+      ProgressView()
+        .progressViewStyle(CircularProgressViewStyle())
+        .scaleEffect(1.5)
+    case .error(let message):
+      VStack {
+        Text(message)
+        Button("Retry") {
+          reload()
+        }
+      }
+    case .loadedEverything:
+      EmptyView()
+    }
   }
 }
 
@@ -143,12 +162,36 @@ private struct MessageContentView: View {
 }
 
 
-#Preview("Loading") {
-  ChatView(viewModel: .mocked(state: .loading))
+#Preview("Loading first batch") {
+  ChatView(viewModel: .mocked(state: .active(.loading, [])))
+}
+
+#Preview("Can load more") {
+  ChatView(viewModel: .mocked(state: .active(.canLoadMore, [
+    .init(header: "24 december", messages: [
+      Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45"))
+      ])
+  ])))
+}
+
+#Preview("Failed to load more") {
+  ChatView(viewModel: .mocked(state: .active(.error("Failed to load older messages"), [
+    .init(header: "24 december", messages: [
+      Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45"))
+      ])
+  ])))
+}
+
+#Preview("Loading more") {
+  ChatView(viewModel: .mocked(state: .active(.loading, [
+    .init(header: "24 december", messages: [
+      Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45"))
+      ])
+  ])))
 }
 
 #Preview("Loaded 5 Messages") {
-  let state = ChatViewModel.ViewState.loaded([
+  let state = ChatViewModel.ViewState.active(.loadedEverything, [
     .init(header: "24 december", messages: [
       Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45")),
       Message(text: "And to you as well!", sender: .you, state: .sent("14:58")),
@@ -165,11 +208,11 @@ private struct MessageContentView: View {
 }
 
 #Preview("Messages being sent, and failed to send") {
-  let state = ChatViewModel.ViewState.loaded([
+  let state = ChatViewModel.ViewState.active(.loadedEverything, [
     .init(header: "Today", messages: [
       Message(text: "Hello guys! Do you want to do something fun today like maybe visit an owl sanctuary?", sender: .you, state: .failedToSend),
       Message(text: "We can bring snacks and beverages", sender: .you, state: .sending)
     ])
   ])
-  ChatView(viewModel: .mocked(state: state))
+  ChatView(viewModel: .mocked(state: state, typing: "And then maybe we can do something else like going to a movie"))
 }
