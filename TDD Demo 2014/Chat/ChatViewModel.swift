@@ -20,7 +20,7 @@ enum ViewState: Equatable {
     case canLoadMore
     case loading
     case error(String)
-    case loadedEverything
+    case completed
   }
 }
 
@@ -57,21 +57,4 @@ final class ChatViewModelLive: ChatViewModel {
   
   func retry(message: Message) {
   }
-}
-
-
-final class ChatPreviewModel: ChatViewModel {
-  @Published private(set) var state: ViewState
-  @Published var typingMessage: String = ""
-  
-  init(state: ViewState, typing: String = "") {
-    self.state = state
-    self.typingMessage = typing
-  }
-  
-  func loadNext() {}
-  
-  func sendMessage() {}
-  
-  func retry(message: Message) {}
 }

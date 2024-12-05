@@ -7,6 +7,7 @@
 
 import Testing
 @testable import TDD_Demo_2014
+import Foundation
 
 fileprivate typealias SUT = ChatViewModelLive
 
@@ -16,7 +17,7 @@ struct TDD_Demo_2014Tests {
     
   }
   
-  @Test("When no messages exist, Then state is noContent") func example() async throws {
+  @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
     // Given
     let service = MockService()
     service.responseStub = .init(moreExists: false, messages: [])
@@ -27,6 +28,32 @@ struct TDD_Demo_2014Tests {
     
     // Then
     #expect(sut.state == .noContent)
+  }
+  
+  @Test("When one page of messages exist, Then state is active with loading completed") func testLoadOnePage() async throws {
+    // Given
+    let service = MockService()
+    service.responseStub = .init(moreExists: false, messages: [
+      .init(id: "1", text: "Hello!", time: makeDate("2024-12-05 08:00"), sender: "Alice")
+    ])
+    let sut = SUT(service: service, currentDate: makeDate("2024-12-05 12:00"))
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    
+    switch sut.state {
+    case .active(let loadingState, _):
+      #expect(loadingState == .completed)
+    default: Issue.record("Unexpected state")
+    }
+  }
+  
+  func makeDate(_ dateString: String) -> Date {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+    return dateFormatter.date(from: dateString)!
   }
   
 }

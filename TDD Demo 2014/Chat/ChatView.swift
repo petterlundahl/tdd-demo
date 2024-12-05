@@ -74,7 +74,7 @@ private struct LoadingView: View {
           reload()
         }
       }
-    case .loadedEverything:
+    case .completed:
       EmptyView()
     }
   }
@@ -196,7 +196,7 @@ private struct MessageContentView: View {
 }
 
 #Preview("Loaded 5 Messages") {
-  let state = ViewState.active(.loadedEverything, [
+  let state = ViewState.active(.completed, [
     .init(header: "24 december", messages: [
       Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45")),
       Message(text: "And to you as well!", sender: .you, state: .sent("14:58")),
@@ -213,7 +213,7 @@ private struct MessageContentView: View {
 }
 
 #Preview("Messages being sent, and failed to send") {
-  let state = ViewState.active(.loadedEverything, [
+  let state = ViewState.active(.completed, [
     .init(header: "Today", messages: [
       Message(text: "Hello guys! Do you want to do something fun today like maybe visit an owl sanctuary?", sender: .you, state: .failedToSend),
       Message(text: "We can bring snacks and beverages", sender: .you, state: .sending)
