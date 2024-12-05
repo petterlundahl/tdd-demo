@@ -49,15 +49,20 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   func loadNext() async {
+    state = .active(.loading, [])
+    
     do {
       let response = try await service.loadMessages(pageNumber: 0)
       if response.messages.isEmpty {
         state = .noContent
       } else {
+        let messages = response.messages.map { message in
+          Message(id: message.id, text: message.text, sender: .other(message.sender ?? ""), state: .sent("08:00"))
+        }
         if response.moreExists {
-          state = .active(.canLoadMore, [])
+          state = .active(.canLoadMore, [ViewState.MessageGroup(header: "Today", messages: messages)])
         } else {
-          state = .active(.completed, [])
+          state = .active(.completed, [ViewState.MessageGroup(header: "Today", messages: messages)])
         }
       }
     } catch {

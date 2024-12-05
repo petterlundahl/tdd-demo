@@ -16,16 +16,32 @@ struct TDD_Demo_2014Tests {
   private let service: MockService
   private let sut: SUT
   
+  private let simpleMessage = MessagesResponse.Message(
+    id: "1",
+    text: "Hello!",
+    time: .makeDate("2024-12-05 08:00"),
+    sender: "Alice"
+  )
+  
   init() {
     service = MockService()
     sut = SUT(service: service, currentDate: .makeDate("2024-12-05 08:00"))
   }
   
+  @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [])
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    #expect(sut.state == .noContent)
+  }
+  
   @Test("When one page of messages exist, Then state is active with loading completed") func testLoadFirstAndOnlyPage() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [
-      .init(id: "1", text: "Hello!", time: .makeDate("2024-12-05 08:00"), sender: "Alice")
-    ])
+    service.responseStub = .init(moreExists: false, messages: [simpleMessage])
     
     // When
     await sut.loadNext()
@@ -40,9 +56,7 @@ struct TDD_Demo_2014Tests {
   
   @Test("When more than one page exists, Then state is active and more can be loaded after first load") func testLoadFirstOfManyPages() async throws {
     // Given
-    service.responseStub = .init(moreExists: true, messages: [
-      .init(id: "1", text: "Hello!", time: .makeDate("2024-12-05 08:00"), sender: "Alice")
-    ])
+    service.responseStub = .init(moreExists: true, messages: [simpleMessage])
     
     // When
     await sut.loadNext()
@@ -55,15 +69,25 @@ struct TDD_Demo_2014Tests {
     }
   }
   
-  @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
+  @Test("State changes to loading before completed") func testStateChanges() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [])
+    service.responseStub = .init(moreExists: false, messages: [simpleMessage])
+    var observedStates: [ViewState] = []
+    let sink = sut.$state.sink { observedStates.append($0) }
     
     // When
     await sut.loadNext()
     
     // Then
-    #expect(sut.state == .noContent)
+    #expect(observedStates == [
+      .idle,
+      .active(.loading, []),
+      .active(.completed, [.init(header: "Today", messages: [
+        .init(id: "1", text: "Hello!", sender: .other("Alice"), state: .sent("08:00"))
+      ])])
+    ])
+    
+    sink.cancel()
   }
   
 }

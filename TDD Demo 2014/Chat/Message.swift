@@ -18,12 +18,13 @@ struct Message: Identifiable, Equatable {
     case other(String)
   }
   
-  let id = UUID()
+  let id: String
   let text: String
   let sender: Sender
   let state: State
   
-  init(text: String, sender: Sender, state: State) {
+  init(id: String = UUID().uuidString, text: String, sender: Sender, state: State) {
+    self.id = id
     self.text = text
     self.sender = sender
     self.state = state
