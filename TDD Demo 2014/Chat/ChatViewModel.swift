@@ -49,7 +49,16 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   func loadNext() async {
-    state = .noContent
+    do {
+      let response = try await service.loadMessages(pageNumber: 0)
+      if response.messages.isEmpty {
+        state = .noContent
+      } else {
+        state = .active(.completed, [])
+      }
+    } catch {
+      
+    }
   }
   
   func sendMessage() {

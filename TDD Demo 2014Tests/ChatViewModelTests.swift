@@ -42,7 +42,6 @@ struct TDD_Demo_2014Tests {
     await sut.loadNext()
     
     // Then
-    
     switch sut.state {
     case .active(let loadingState, _):
       #expect(loadingState == .completed)
