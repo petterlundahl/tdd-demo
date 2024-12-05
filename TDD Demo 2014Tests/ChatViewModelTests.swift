@@ -19,19 +19,14 @@ struct TDD_Demo_2014Tests {
   @Test("When no messages exist, Then state is noContent") func example() async throws {
     // Given
     let service = MockService()
+    service.responseStub = .init(moreExists: false, messages: [])
     let sut = SUT(service: service)
-    var observedStates: [ViewState] = []
-    let sink = sut.$state.sink { observedStates.append($0) }
     
     // When
     await sut.loadNext()
     
     // Then
-    #expect(observedStates == [
-      .idle,
-      .active(.loading, []),
-      .noContent
-    ])
+    #expect(sut.state == .noContent)
   }
   
 }

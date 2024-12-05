@@ -21,6 +21,7 @@ struct ChatView<ViewModel: ChatViewModel>: View {
         Color.clear.onAppear { Task { await viewModel.loadNext() } }
       case .noContent:
         Text("This chat is empty! Write the first message")
+        Spacer()
       case .active(let loadingState, let groups):
         LoadingView(state: loadingState) { Task { await viewModel.loadNext() } }
         ScrollView {
@@ -188,6 +189,10 @@ private struct MessageContentView: View {
       Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45"))
       ])
   ])))
+}
+
+#Preview("No messages exist") {
+  ChatView(viewModel: ChatPreviewModel(state: .noContent))
 }
 
 #Preview("Loaded 5 Messages") {

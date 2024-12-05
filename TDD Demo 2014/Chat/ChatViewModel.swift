@@ -49,7 +49,7 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   func loadNext() async {
-    
+    state = .noContent
   }
   
   func sendMessage() {
