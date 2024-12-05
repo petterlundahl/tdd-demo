@@ -7,10 +7,10 @@
 
 import SwiftUI
 
-struct ChatView: View {
-  @ObservedObject private var viewModel: ChatViewModel
+struct ChatView<ViewModel: ChatViewModel>: View {
+  @ObservedObject private var viewModel: ViewModel
   
-  init(viewModel: ChatViewModel) {
+  init(viewModel: ViewModel) {
     self.viewModel = viewModel
   }
   
@@ -18,18 +18,18 @@ struct ChatView: View {
     VStack {
       switch viewModel.state {
       case .idle:
-        Color.clear.onAppear { viewModel.loadNext() }
+        Color.clear.onAppear { Task { await viewModel.loadNext() } }
       case .noContent:
         Text("This chat is empty! Write the first message")
       case .active(let loadingState, let groups):
-        LoadingView(state: loadingState) { viewModel.loadNext() }
+        LoadingView(state: loadingState) { Task { await viewModel.loadNext() } }
         ScrollView {
           LazyVStack(spacing: 16) {
             ForEach(groups, id: \.header) { group in
               Text(group.header)
               ForEach(group.messages) { message in
                 ChatMessageView(message: message) {
-                  viewModel.sendMessage()
+                  Task { await viewModel.sendMessage() }
                 }
               }
             }
@@ -43,7 +43,7 @@ struct ChatView: View {
         .textFieldStyle(RoundedBorderTextFieldStyle())
         .frame(minHeight: CGFloat(40))
         .lineLimit(0)
-      Button(action: { viewModel.sendMessage() }) {
+      Button(action: { Task { await viewModel.sendMessage() }}) {
         Text("Send")
       }
     }
@@ -53,7 +53,7 @@ struct ChatView: View {
 }
 
 private struct LoadingView: View {
-  let state: ChatViewModel.ViewState.LoadingState
+  let state: ViewState.LoadingState
   let reload: () -> Void
   
   var body: some View {
@@ -163,11 +163,11 @@ private struct MessageContentView: View {
 
 
 #Preview("Loading first batch") {
-  ChatView(viewModel: .mocked(state: .active(.loading, [])))
+  ChatView(viewModel: ChatPreviewModel(state: .active(.loading, [])))
 }
 
 #Preview("Can load more") {
-  ChatView(viewModel: .mocked(state: .active(.canLoadMore, [
+  ChatView(viewModel: ChatPreviewModel(state: .active(.canLoadMore, [
     .init(header: "24 december", messages: [
       Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45"))
       ])
@@ -175,7 +175,7 @@ private struct MessageContentView: View {
 }
 
 #Preview("Failed to load more") {
-  ChatView(viewModel: .mocked(state: .active(.error("Failed to load older messages"), [
+  ChatView(viewModel: ChatPreviewModel(state: .active(.error("Failed to load older messages"), [
     .init(header: "24 december", messages: [
       Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45"))
       ])
@@ -183,7 +183,7 @@ private struct MessageContentView: View {
 }
 
 #Preview("Loading more") {
-  ChatView(viewModel: .mocked(state: .active(.loading, [
+  ChatView(viewModel: ChatPreviewModel(state: .active(.loading, [
     .init(header: "24 december", messages: [
       Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45"))
       ])
@@ -191,7 +191,7 @@ private struct MessageContentView: View {
 }
 
 #Preview("Loaded 5 Messages") {
-  let state = ChatViewModel.ViewState.active(.loadedEverything, [
+  let state = ViewState.active(.loadedEverything, [
     .init(header: "24 december", messages: [
       Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45")),
       Message(text: "And to you as well!", sender: .you, state: .sent("14:58")),
@@ -204,15 +204,15 @@ private struct MessageContentView: View {
       Message(text: "For sure! That sounds like an excellent idea!", sender: .other("Alice"), state: .sent("07:16"))
     ])
   ])
-  ChatView(viewModel: .mocked(state: state))
+  ChatView(viewModel: ChatPreviewModel(state: state))
 }
 
 #Preview("Messages being sent, and failed to send") {
-  let state = ChatViewModel.ViewState.active(.loadedEverything, [
+  let state = ViewState.active(.loadedEverything, [
     .init(header: "Today", messages: [
       Message(text: "Hello guys! Do you want to do something fun today like maybe visit an owl sanctuary?", sender: .you, state: .failedToSend),
       Message(text: "We can bring snacks and beverages", sender: .you, state: .sending)
     ])
   ])
-  ChatView(viewModel: .mocked(state: state, typing: "And then maybe we can do something else like going to a movie"))
+  ChatView(viewModel: ChatPreviewModel(state: state, typing: "And then maybe we can do something else like going to a movie"))
 }
