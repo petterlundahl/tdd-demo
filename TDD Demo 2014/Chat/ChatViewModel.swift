@@ -22,9 +22,14 @@ final class ChatViewModel: ObservableObject {
   }
   
   @Published private(set) var state: ViewState = .idle
+  @Published var typingMessage: String = ""
   
   func load() {
     //
+  }
+  
+  func sendMessage() {
+    typingMessage = ""
   }
 }
 

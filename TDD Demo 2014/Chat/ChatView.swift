@@ -9,40 +9,53 @@ import SwiftUI
 
 struct ChatView: View {
   @ObservedObject private var viewModel: ChatViewModel
+  //@State var typingMessage: String = ""
   
   init(viewModel: ChatViewModel) {
     self.viewModel = viewModel
   }
   
   var body: some View {
-    switch viewModel.state {
-    case .idle:
-      Color.clear.onAppear { viewModel.load() }
-    case .loading:
-      VStack {
-        Spacer()
-        ProgressView()
-          .progressViewStyle(CircularProgressViewStyle())
-          .scaleEffect(2)
-        Spacer()
-      }
-    case .noContent:
-      Text("You don't have any  yet!")
-    case .error:
-      Text("Something went wrong. Please try again later!")
-    case .loaded(let groups):
-      ScrollView {
-        LazyVStack(spacing: 16) {
-          ForEach(groups, id: \.header) { group in
-            Text(group.header)
-            ForEach(group.messages) { message in
-              ChatMessageView(message: message)
+    VStack {
+      switch viewModel.state {
+      case .idle:
+        Color.clear.onAppear { viewModel.load() }
+      case .loading:
+        VStack {
+          Spacer()
+          ProgressView()
+            .progressViewStyle(CircularProgressViewStyle())
+            .scaleEffect(2)
+          Spacer()
+        }
+      case .noContent:
+        Text("You don't have any  yet!")
+      case .error:
+        Text("Something went wrong. Please try again later!")
+      case .loaded(let groups):
+        ScrollView {
+          LazyVStack(spacing: 16) {
+            ForEach(groups, id: \.header) { group in
+              Text(group.header)
+              ForEach(group.messages) { message in
+                ChatMessageView(message: message)
+              }
             }
           }
+          .padding()
         }
-        .padding()
       }
     }
+    HStack {
+      TextField("Message...", text: $viewModel.typingMessage)
+        .textFieldStyle(RoundedBorderTextFieldStyle())
+        .frame(minHeight: CGFloat(30))
+      Button(action: { viewModel.sendMessage() }) {
+        Text("Send")
+      }
+    }
+    .frame(minHeight: CGFloat(50))
+    .padding()
   }
 }
 
