@@ -13,30 +13,19 @@ fileprivate typealias SUT = ChatViewModelLive
 
 struct TDD_Demo_2014Tests {
   
+  private let service: MockService
+  private let sut: SUT
+  
   init() {
-    
+    service = MockService()
+    sut = SUT(service: service, currentDate: .makeDate("2024-12-05 08:00"))
   }
   
-  @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
+  @Test("When one page of messages exist, Then state is active with loading completed") func testLoadFirstAndOnlyPage() async throws {
     // Given
-    let service = MockService()
-    service.responseStub = .init(moreExists: false, messages: [])
-    let sut = SUT(service: service)
-    
-    // When
-    await sut.loadNext()
-    
-    // Then
-    #expect(sut.state == .noContent)
-  }
-  
-  @Test("When one page of messages exist, Then state is active with loading completed") func testLoadOnePage() async throws {
-    // Given
-    let service = MockService()
     service.responseStub = .init(moreExists: false, messages: [
-      .init(id: "1", text: "Hello!", time: makeDate("2024-12-05 08:00"), sender: "Alice")
+      .init(id: "1", text: "Hello!", time: .makeDate("2024-12-05 08:00"), sender: "Alice")
     ])
-    let sut = SUT(service: service, currentDate: makeDate("2024-12-05 12:00"))
     
     // When
     await sut.loadNext()
@@ -49,12 +38,42 @@ struct TDD_Demo_2014Tests {
     }
   }
   
-  func makeDate(_ dateString: String) -> Date {
+  @Test("When more than one page exists, Then state is active and more can be loaded after first load") func testLoadFirstOfManyPages() async throws {
+    // Given
+    service.responseStub = .init(moreExists: true, messages: [
+      .init(id: "1", text: "Hello!", time: .makeDate("2024-12-05 08:00"), sender: "Alice")
+    ])
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    switch sut.state {
+    case .active(let loadingState, _):
+      #expect(loadingState == .canLoadMore)
+    default: Issue.record("Unexpected state")
+    }
+  }
+  
+  @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [])
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    #expect(sut.state == .noContent)
+  }
+  
+}
+
+extension Date {
+  static func makeDate(_ dateString: String) -> Date {
     let dateFormatter = DateFormatter()
     dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
     return dateFormatter.date(from: dateString)!
   }
-  
 }
 
 private final class MockService: ChatServicing {

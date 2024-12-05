@@ -54,7 +54,11 @@ final class ChatViewModelLive: ChatViewModel {
       if response.messages.isEmpty {
         state = .noContent
       } else {
-        state = .active(.completed, [])
+        if response.moreExists {
+          state = .active(.canLoadMore, [])
+        } else {
+          state = .active(.completed, [])
+        }
       }
     } catch {
       
