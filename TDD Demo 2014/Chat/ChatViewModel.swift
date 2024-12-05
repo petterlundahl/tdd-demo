@@ -31,6 +31,10 @@ final class ChatViewModel: ObservableObject {
   func sendMessage() {
     typingMessage = ""
   }
+  
+  func retry(message: Message) {
+    //message.state = .sent("Now")
+  }
 }
 
 extension ChatViewModel {

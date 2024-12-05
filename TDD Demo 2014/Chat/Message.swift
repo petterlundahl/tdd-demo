@@ -9,7 +9,7 @@ import Foundation
 struct Message: Identifiable, Equatable {
   enum State: Equatable {
     case sending
-    case sent
+    case sent(String)
     case failedToSend
   }
   
@@ -22,12 +22,10 @@ struct Message: Identifiable, Equatable {
   let text: String
   let sender: Sender
   let state: State
-  let time: String
   
-  init(text: String, sender: Sender, state: State, time: String) {
+  init(text: String, sender: Sender, state: State) {
     self.text = text
     self.sender = sender
     self.state = state
-    self.time = time
   }
 }

@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ChatView: View {
   @ObservedObject private var viewModel: ChatViewModel
-  //@State var typingMessage: String = ""
   
   init(viewModel: ChatViewModel) {
     self.viewModel = viewModel
@@ -38,7 +37,9 @@ struct ChatView: View {
             ForEach(groups, id: \.header) { group in
               Text(group.header)
               ForEach(group.messages) { message in
-                ChatMessageView(message: message)
+                ChatMessageView(message: message) {
+                  viewModel.sendMessage()
+                }
               }
             }
           }
@@ -61,9 +62,17 @@ struct ChatView: View {
 
 private struct ChatMessageView: View {
   let message: Message
+  let time: String?
+  let retrySend: () -> Void
   
-  init(message: Message) {
+  init(message: Message, retrySend: @escaping () -> Void) {
     self.message = message
+    if case .sent(let time) = message.state {
+      self.time = time
+    } else {
+      time = nil
+    }
+    self.retrySend = retrySend
   }
   
   var body: some View {
@@ -71,18 +80,29 @@ private struct ChatMessageView: View {
       switch message.sender {
       case .you:
         Spacer()
-        MessageContentView(text: message.text, time: message.time)
+        MessageContentView(text: message.text, time: time)
           .background(
             RoundedRectangle(cornerRadius: 16)
-              .fill(Color.blue)
+              .fill(message.state == .failedToSend ? Color.pink : Color.blue)
           )
           .shadow(color: .gray.opacity(0.5), radius: 5, x: 0, y: 2)
           .font(.title2)
           .foregroundStyle(.white)
+        if message.state == .sending {
+          ProgressView()
+        } else if message.state == .failedToSend {
+          Button(action: {
+            retrySend()
+          }) {
+              Image(systemName: "arrow.clockwise")
+              .scaleEffect(2)
+              .foregroundColor(.black)
+          }
+        }
       case .other(let sender):
         Image(systemName: "person.circle.fill")
           .scaleEffect(1.5)
-        MessageContentView(text: message.text, sender: sender, time: message.time)
+        MessageContentView(text: message.text, sender: sender, time: time)
           .background(
             RoundedRectangle(cornerRadius: 16)
               .fill(Color(UIColor(red: 240/255, green: 240/255, blue: 240/255, alpha: 1.0)))
@@ -97,9 +117,9 @@ private struct ChatMessageView: View {
 private struct MessageContentView: View {
   private let text: String
   private let sender: String?
-  private let time: String
+  private let time: String?
   
-  init(text: String, sender: String? = nil, time: String) {
+  init(text: String, sender: String? = nil, time: String? = nil) {
     self.text = text
     self.sender = sender
     self.time = time
@@ -113,8 +133,10 @@ private struct MessageContentView: View {
       }
       Text(text)
         .font(.title2)
-      Text(time)
-        .font(.footnote)
+      if let time {
+        Text(time)
+          .font(.footnote)
+      }
     }
     .padding()
   }
@@ -128,15 +150,25 @@ private struct MessageContentView: View {
 #Preview("Loaded 5 Messages") {
   let state = ChatViewModel.ViewState.loaded([
     .init(header: "24 december", messages: [
-      Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent, time: "14:45"),
-      Message(text: "And to you as well!", sender: .you, state: .sent, time: "14:58"),
+      Message(text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45")),
+      Message(text: "And to you as well!", sender: .you, state: .sent("14:58")),
     ]),
     .init(header: "31 december", messages: [
-      Message(text: "Happy new year!", sender: .other("Bob"), state: .sent, time: "23:58")
+      Message(text: "Happy new year!", sender: .other("Bob"), state: .sent("23:58"))
     ]),
     .init(header: "Today", messages: [
-      Message(text: "Hello guys! Do you want to do something fun today like maybe visit an owl sanctuary?", sender: .you, state: .sent, time: "07:15"),
-      Message(text: "For sure! That sounds like an excellent idea!", sender: .other("Alice"), state: .sent, time: "07:16")
+      Message(text: "Hello guys! Do you want to do something fun today like maybe visit an owl sanctuary?", sender: .you, state: .sent("07:15")),
+      Message(text: "For sure! That sounds like an excellent idea!", sender: .other("Alice"), state: .sent("07:16"))
+    ])
+  ])
+  ChatView(viewModel: .mocked(state: state))
+}
+
+#Preview("Messages being sent, and failed to send") {
+  let state = ChatViewModel.ViewState.loaded([
+    .init(header: "Today", messages: [
+      Message(text: "Hello guys! Do you want to do something fun today like maybe visit an owl sanctuary?", sender: .you, state: .failedToSend),
+      Message(text: "We can bring snacks and beverages", sender: .you, state: .sending)
     ])
   ])
   ChatView(viewModel: .mocked(state: state))
