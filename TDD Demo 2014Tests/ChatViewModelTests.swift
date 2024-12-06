@@ -11,7 +11,7 @@ import Foundation
 
 fileprivate typealias SUT = ChatViewModelLive
 
-struct TDD_Demo_2014Tests {
+struct ChatViewModelTests {
   
   private let service: MockService
   private let sut: SUT
@@ -19,13 +19,13 @@ struct TDD_Demo_2014Tests {
   private let simpleMessage = MessagesResponse.Message(
     id: "1",
     text: "Hello!",
-    time: .makeDate("2024-12-05 08:00"),
+    dateTime: "2024-12-05T08:30:00Z",
     sender: "Alice"
   )
   
   init() {
     service = MockService()
-    sut = SUT(service: service, currentDate: .makeDate("2024-12-05 08:00"))
+    sut = SUT(service: service, currentDate: .makeDate("2024-12-05 09:00"))
   }
   
   @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
@@ -115,3 +115,4 @@ private final class MockService: ChatServicing {
 }
 
 extension String: Error { }
+
