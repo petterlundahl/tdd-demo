@@ -19,13 +19,13 @@ struct ChatViewModelTests {
   private let simpleMessage = MessagesResponse.Message(
     id: "1",
     text: "Hello!",
-    dateTime: "2024-12-05T08:30:00Z",
+    dateTime: "2025-01-05T08:30:00Z",
     sender: "Alice"
   )
   
   init() {
     service = MockService()
-    sut = SUT(service: service, currentDate: .makeDate("2024-12-05 09:00"))
+    sut = SUT(service: service, currentDate: .makeDate("2025-01-05 09:00"))
   }
   
   @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
@@ -99,6 +99,36 @@ struct ChatViewModelTests {
     
     // Then
     #expect(sut.state == .active(.error("Something went wrong"), []))
+  }
+  
+  @Test("Messages can be grouped by date, with correct time of day") func testLoadMany() async throws {
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [
+      .init(id: "1", text: "Merry Christmas!", dateTime: "2024-12-24T14:45:17Z", sender: "Alice"),
+      .init(id: "2", text: "You too!", dateTime: "2024-12-24T14:58:19Z", sender: nil),
+      .init(id: "3", text: "Happy new year!", dateTime: "2024-12-31T23:58:07Z", sender: "Bob"),
+      .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil),
+      .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice"),
+    ])
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    let expectedState = ViewState.active(.completed, [
+      .init(header: "24 december", messages: [
+        Message(id: "1", text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45")),
+        Message(id: "2", text: "You too!", sender: .you, state: .sent("14:58")),
+      ]),
+      .init(header: "31 december", messages: [
+        Message(id: "3", text: "Happy new year!", sender: .other("Bob"), state: .sent("23:58"))
+      ]),
+      .init(header: "Today", messages: [
+        Message(id: "4", text: "Hello guys!", sender: .you, state: .sent("07:15")),
+        Message(id: "5", text: "Hey Friend!", sender: .other("Alice"), state: .sent("07:16"))
+      ])
+    ])
+    #expect(sut.state == expectedState)
   }
   
 }
