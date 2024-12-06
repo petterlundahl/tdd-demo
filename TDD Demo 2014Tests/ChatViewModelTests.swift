@@ -90,6 +90,17 @@ struct ChatViewModelTests {
     sink.cancel()
   }
   
+  @Test("When loading fails, Then state is error") func testLoadError() async throws {
+    // Given
+    service.loadError = URLError(.timedOut)
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    #expect(sut.state == .active(.error("Something went wrong"), []))
+  }
+  
 }
 
 extension Date {
@@ -101,9 +112,11 @@ extension Date {
 }
 
 private final class MockService: ChatServicing {
+  var loadError: Error?
   var responseStub: MessagesResponse?
   
   func loadMessages(pageNumber: Int) async throws -> MessagesResponse {
+    if let loadError { throw loadError }
     if let responseStub { return responseStub }
     Issue.record("Response was not stubbed")
     throw "Response was not stubbed"
