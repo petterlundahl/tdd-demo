@@ -25,7 +25,11 @@ struct ChatViewModelTests {
   
   init() {
     service = MockService()
-    sut = SUT(service: service, currentDate: .makeDate("2025-01-05 09:00"))
+    sut = SUT(
+      service: service,
+      currentDate: .makeDate("2025-01-05 09:00"),
+      currentTimeZone: TimeZone.gmt
+    )
   }
   
   @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
@@ -83,7 +87,7 @@ struct ChatViewModelTests {
       .idle,
       .active(.loading, []),
       .active(.completed, [.init(header: "Today", messages: [
-        .init(id: "1", text: "Hello!", sender: .other("Alice"), state: .sent("08:00"))
+        .init(id: "1", text: "Hello!", sender: .other("Alice"), state: .sent("08:30"))
       ])])
     ])
     
@@ -101,7 +105,7 @@ struct ChatViewModelTests {
     #expect(sut.state == .active(.error("Something went wrong"), []))
   }
   
-  @Test("Messages can be grouped by date, with correct time of day") func testLoadMany() async throws {
+  @Test("Messages can be grouped by date, with correct time of day and sender") func testLoadMany() async throws {
     // Given
     service.responseStub = .init(moreExists: false, messages: [
       .init(id: "1", text: "Merry Christmas!", dateTime: "2024-12-24T14:45:17Z", sender: "Alice"),
@@ -116,11 +120,11 @@ struct ChatViewModelTests {
     
     // Then
     let expectedState = ViewState.active(.completed, [
-      .init(header: "24 december", messages: [
+      .init(header: "24 December", messages: [
         Message(id: "1", text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45")),
         Message(id: "2", text: "You too!", sender: .you, state: .sent("14:58")),
       ]),
-      .init(header: "31 december", messages: [
+      .init(header: "31 December", messages: [
         Message(id: "3", text: "Happy new year!", sender: .other("Bob"), state: .sent("23:58"))
       ]),
       .init(header: "Today", messages: [
