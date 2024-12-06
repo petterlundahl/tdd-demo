@@ -66,7 +66,7 @@ final class ChatViewModelLive: ChatViewModel {
         }
       }
     } catch {
-      
+      state = .active(.error("Something went wrong"), [])
     }
   }
   
