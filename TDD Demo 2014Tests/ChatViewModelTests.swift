@@ -153,13 +153,10 @@ private final class MockService: ChatServicing {
     if let loadError { throw loadError }
     if let responseStub { return responseStub }
     Issue.record("Response was not stubbed")
-    throw "Response was not stubbed"
+    throw URLError(.timedOut)
   }
   
   func sendMessage(text: String) async throws {
     
   }
 }
-
-extension String: Error { }
-
