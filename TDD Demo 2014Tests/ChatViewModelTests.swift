@@ -181,6 +181,59 @@ struct ChatViewModelTests {
     #expect(service.requestedPages == [1, 2, 3])
   }
   
+  @Test("When loading the second page fails, previously loaded messages are not changed, and the state is error") func testLoadMorePagesWithErrors() async throws {
+    // Given
+    service.responseStub = .init(moreExists: true, messages: [
+      .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
+    ])
+    await sut.loadNext()
+    service.loadError = URLError(.timedOut)
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    let expectedState = ViewState.active(.error("Something went wrong"), [
+      .init(header: "Today", messages: [
+        Message(id: "5", text: "Hey Friend!", sender: .other("Alice"), state: .sent("07:16"))
+      ])
+    ])
+    #expect(sut.state == expectedState)
+  }
+  
+  /*
+   @Test("When loading a page fails, previously loaded messages are not changed, and page number is not increased until loading succeeds") func testLoadMorePagesWithErrors() async throws {
+     // Given
+     service.responseStub = .init(moreExists: true, messages: [
+       .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
+     ])
+     
+     await sut.loadNext()
+     
+     service.loadError = URLError(.timedOut)
+     
+     // When
+     await sut.loadNext()
+     
+     service.responseStub = .init(moreExists: true, messages: [
+       .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil)
+     ])
+     
+     // When
+     await sut.loadNext()
+     
+     // Then
+     let expectedState = ViewState.active(.completed, [
+       .init(header: "Today", messages: [
+         Message(id: "4", text: "Hello guys!", sender: .you, state: .sent("07:15")),
+         Message(id: "5", text: "Hey Friend!", sender: .other("Alice"), state: .sent("07:16"))
+       ])
+     ])
+     #expect(sut.state == expectedState)
+     #expect(service.requestedPages == [1, 2, 3])
+   }
+   */
+  
 }
 
 extension Date {
