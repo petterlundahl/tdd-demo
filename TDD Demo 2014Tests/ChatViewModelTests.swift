@@ -135,6 +135,51 @@ struct ChatViewModelTests {
     #expect(sut.state == expectedState)
   }
   
+  @Test("When loading more pages, the older messages are added to the list, and page number is incremented") func testLoadMorePages() async throws {
+    // Given
+    service.responseStub = .init(moreExists: true, messages: [
+      .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil),
+      .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
+    ])
+    
+    // When
+    await sut.loadNext()
+    
+    // Given
+    service.responseStub = .init(moreExists: true, messages: [
+      .init(id: "2", text: "You too!", dateTime: "2024-12-24T14:58:19Z", sender: nil),
+      .init(id: "3", text: "Happy new year!", dateTime: "2024-12-31T23:58:07Z", sender: "Bob")
+    ])
+    
+    // When
+    await sut.loadNext()
+    
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [
+      .init(id: "1", text: "Merry Christmas!", dateTime: "2024-12-24T14:45:17Z", sender: "Alice")
+    ])
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    let expectedState = ViewState.active(.completed, [
+      .init(header: "24 December", messages: [
+        Message(id: "1", text: "Merry Christmas!", sender: .other("Alice"), state: .sent("14:45")),
+        Message(id: "2", text: "You too!", sender: .you, state: .sent("14:58")),
+      ]),
+      .init(header: "31 December", messages: [
+        Message(id: "3", text: "Happy new year!", sender: .other("Bob"), state: .sent("23:58"))
+      ]),
+      .init(header: "Today", messages: [
+        Message(id: "4", text: "Hello guys!", sender: .you, state: .sent("07:15")),
+        Message(id: "5", text: "Hey Friend!", sender: .other("Alice"), state: .sent("07:16"))
+      ])
+    ])
+    #expect(sut.state == expectedState)
+    #expect(service.requestedPages == [1, 2, 3])
+  }
+  
 }
 
 extension Date {
@@ -148,8 +193,10 @@ extension Date {
 private final class MockService: ChatServicing {
   var loadError: Error?
   var responseStub: MessagesResponse?
+  var requestedPages: [Int] = []
   
   func loadMessages(pageNumber: Int) async throws -> MessagesResponse {
+    requestedPages.append(pageNumber)
     if let loadError { throw loadError }
     if let responseStub { return responseStub }
     Issue.record("Response was not stubbed")
