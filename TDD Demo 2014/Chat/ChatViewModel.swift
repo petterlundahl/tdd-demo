@@ -25,6 +25,7 @@ enum ViewState: Equatable {
   }
 }
 
+@MainActor
 protocol ChatViewModel: ObservableObject {
   var state: ViewState { get }
   var typingMessage: String { get set }
@@ -35,8 +36,6 @@ protocol ChatViewModel: ObservableObject {
 
 @MainActor
 final class ChatViewModelLive: ChatViewModel {
-  
-  
   
   @Published private(set) var state: ViewState = .idle
   @Published var typingMessage: String = ""
@@ -57,7 +56,7 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   func loadNext() async {
-    state = .active(.loading, [])
+    state = .active(.loading, currentMessageGroups)
     
     do {
       let response = try await service.loadMessages(pageNumber: nextPageNumber)
@@ -80,21 +79,24 @@ final class ChatViewModelLive: ChatViewModel {
         
         var currentDay: String = ""
         var messagesInCurrentDay: [Message] = []
+        var newGroups: [ViewState.MessageGroup] = []
         
         for (message, day) in messageAndDays {
           if day == currentDay {
             messagesInCurrentDay.append(message)
           } else {
             if !messagesInCurrentDay.isEmpty {
-              currentGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
+              newGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
             }
             currentDay = day
             messagesInCurrentDay = [message]
           }
         }
         if !messagesInCurrentDay.isEmpty {
-          currentGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
+          newGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
         }
+        
+        currentGroups.insert(contentsOf: newGroups, at: 0)
         
         if response.moreExists {
           state = .active(.canLoadMore, currentGroups)
