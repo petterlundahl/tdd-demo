@@ -11,6 +11,7 @@ import Foundation
 
 fileprivate typealias SUT = ChatViewModelLive
 
+@MainActor
 struct ChatViewModelTests {
   
   private let service: MockService
@@ -135,7 +136,7 @@ struct ChatViewModelTests {
     #expect(sut.state == expectedState)
   }
   
-  @Test("When loading more pages, the older messages are added to the list, and page number is incremented") func testLoadMorePages() async throws {
+  @Test("When loading more pages, then older messages are added to the list, and page number is incremented") func testLoadMorePages() async throws {
     // Given
     service.responseStub = .init(moreExists: true, messages: [
       .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil),

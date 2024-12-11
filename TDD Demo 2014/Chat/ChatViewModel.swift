@@ -33,7 +33,10 @@ protocol ChatViewModel: ObservableObject {
   func retry(message: Message) async
 }
 
+@MainActor
 final class ChatViewModelLive: ChatViewModel {
+  
+  
   
   @Published private(set) var state: ViewState = .idle
   @Published var typingMessage: String = ""
@@ -41,6 +44,7 @@ final class ChatViewModelLive: ChatViewModel {
   private let service: ChatServicing
   private let currentDate: Date
   private let currentTimeZone: TimeZone
+  private var nextPageNumber = 1
   
   init(
     service: ChatServicing,
@@ -56,19 +60,40 @@ final class ChatViewModelLive: ChatViewModel {
     state = .active(.loading, [])
     
     do {
-      let response = try await service.loadMessages(pageNumber: 0)
+      let response = try await service.loadMessages(pageNumber: nextPageNumber)
+      nextPageNumber += 1
       if response.messages.isEmpty {
         state = .noContent
       } else {
+        var messageAndDays = response.messages.map { message in messageAndDay(from: message) }
+        
         var currentGroups = currentMessageGroups
-        let messageAndDays = response.messages.map { message in messageAndDay(from: message) }
+        if let oldestExistingGroup = currentGroups.first {
+          let newMessagesToAdd = messageAndDays.filter { (message, day) in oldestExistingGroup.header == day }
+            .map { message, _ in message }
+          var copy = oldestExistingGroup.messages
+          copy.insert(contentsOf: newMessagesToAdd, at: 0)
+          currentGroups.removeFirst()
+          currentGroups.insert(ViewState.MessageGroup(header: oldestExistingGroup.header, messages: copy), at: 0)
+          messageAndDays.removeFirst(newMessagesToAdd.count)
+        }
+        
+        var currentDay: String = ""
+        var messagesInCurrentDay: [Message] = []
         
         for (message, day) in messageAndDays {
-          let matchingGroup = currentGroups.first { $0.header == day } ?? ViewState.MessageGroup(header: day, messages: [])
-          var copy = matchingGroup.messages
-          copy.append(message)
-          currentGroups.removeAll { $0.header == day }
-          currentGroups.append(ViewState.MessageGroup(header: day, messages: copy))
+          if day == currentDay {
+            messagesInCurrentDay.append(message)
+          } else {
+            if !messagesInCurrentDay.isEmpty {
+              currentGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
+            }
+            currentDay = day
+            messagesInCurrentDay = [message]
+          }
+        }
+        if !messagesInCurrentDay.isEmpty {
+          currentGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
         }
         
         if response.moreExists {

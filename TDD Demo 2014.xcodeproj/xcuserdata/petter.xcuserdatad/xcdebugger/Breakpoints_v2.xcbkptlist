@@ -3,4 +3,52 @@
    uuid = "B29E6535-F12D-4C3E-94A5-42A6D531AA24"
    type = "1"
    version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "02345BE5-9883-4133-B790-C7725773AE71"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "TDD Demo 2014/Chat/ChatViewModel.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "71"
+            endingLineNumber = "71"
+            landmarkName = "loadNext()"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "02345BE5-9883-4133-B790-C7725773AE71 - 2cd82818cbcde732"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(3) suspend resume partial function for TDD_Demo_2014.ChatViewModelLive.loadNext() async -&gt; ()"
+                  moduleName = "TDD Demo 2014.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/petter/Dev/xCode/TDD%20Demo%202014/TDD%20Demo%202014/Chat/ChatViewModel.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "71"
+                  endingLineNumber = "71">
+               </Location>
+               <Location
+                  uuid = "02345BE5-9883-4133-B790-C7725773AE71 - 21a99701e08106ac"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #3 (TDD_Demo_2014.Message, Swift.String) -&gt; TDD_Demo_2014.Message in TDD_Demo_2014.ChatViewModelLive.loadNext() async -&gt; ()"
+                  moduleName = "TDD Demo 2014.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/petter/Dev/xCode/TDD%20Demo%202014/TDD%20Demo%202014/Chat/ChatViewModel.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "71"
+                  endingLineNumber = "71">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
 </Bucket>
