@@ -201,22 +201,24 @@ struct ChatViewModelTests {
     #expect(sut.state == expectedState)
   }
   
-  /*
-   @Test("When loading a page fails, previously loaded messages are not changed, and page number is not increased until loading succeeds") func testLoadMorePagesWithErrors() async throws {
+   @Test("When loading the next page fails, page number is not increased until after loading succeeds") func testLoadMorePagesWithErrorsCheckingPageNumber() async throws {
      // Given
      service.responseStub = .init(moreExists: true, messages: [
-       .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
+       .init(id: "2", text: "Latest Message", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
      ])
      
      await sut.loadNext()
      
      service.loadError = URLError(.timedOut)
      
-     // When
+     // Trying to reload multiple times, with errors
+     await sut.loadNext()
+     await sut.loadNext()
      await sut.loadNext()
      
-     service.responseStub = .init(moreExists: true, messages: [
-       .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil)
+     service.loadError = nil
+     service.responseStub = .init(moreExists: false, messages: [
+       .init(id: "1", text: "Oldest Message", dateTime: "2025-01-05T07:15:19Z", sender: nil)
      ])
      
      // When
@@ -225,14 +227,13 @@ struct ChatViewModelTests {
      // Then
      let expectedState = ViewState.active(.completed, [
        .init(header: "Today", messages: [
-         Message(id: "4", text: "Hello guys!", sender: .you, state: .sent("07:15")),
-         Message(id: "5", text: "Hey Friend!", sender: .other("Alice"), state: .sent("07:16"))
+        Message(id: "1", text: "Oldest Message", sender: .you, state: .sent("07:15")),
+        Message(id: "2", text: "Latest Message", sender: .other("Alice"), state: .sent("07:16"))
        ])
      ])
      #expect(sut.state == expectedState)
-     #expect(service.requestedPages == [1, 2, 3])
+     #expect(service.requestedPages == [1, 2, 2, 2, 2])
    }
-   */
   
 }
 
