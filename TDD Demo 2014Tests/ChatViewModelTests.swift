@@ -332,6 +332,45 @@ struct ChatViewModelTests {
     ])
   }
   
+  @Test("When retrying to send a failed message, Then it can be sent") func testResendingFailedMessage() async throws {
+    // Given that the message fails to send
+    service.responseStub = .init(moreExists: false, messages: [])
+    service.sendMessageError = URLError(.timedOut)
+    await sut.loadNext()
+    sut.typingMessage = "Failing message"
+    await sut.sendMessage()
+    
+    // When we retry the failing message
+    guard let lastState = environment.observedStates.last else {
+      Issue.record("Expected at least one state to be observed. 0 found")
+      return
+    }
+    
+    switch lastState {
+    case .active(_, let messageGroups):
+      guard let failedMessage = messageGroups.first?.messages.first else {
+        Issue.record("Expected one message to be published in state")
+        return
+      }
+      
+      service.sendMessageError = nil
+      service.sentMessageIdStub = "1"
+      await sut.retry(message: failedMessage)
+    default: Issue.record("Unexpected state: \(lastState)")
+    }
+    
+    // Then the message should be sent
+    #expect(sut.state == .active(.completed, [.init(header: "Today", messages: [
+      .init(id: "1", text: "Failing message", sender: .you, state: .sent("09:00"))
+    ])]))
+    #expect(service.sentMessageText == "Failing message")
+  }
+  
+  // TODO:
+  // Use the current time when sending a Message
+  // Messages over a year old should include year in header
+  // When sending the first message Today, the Today group should be added
+  
 }
 
 extension Date {
