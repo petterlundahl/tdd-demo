@@ -136,14 +136,7 @@ final class ChatViewModelLive: ChatViewModel {
     let pendingMessage = Message(id: "sending-\(nextPendingMessageId)", text: messageText, sender: .you, state: .sending)
     nextPendingMessageId += 1
     appendReplacing(previousId: nil, newMessage: pendingMessage)
-    do {
-      let messageId = try await service.sendMessage(text: messageText)
-      let message = Message(id: messageId, text: messageText, sender: .you, state: .sent("09:00"))
-      appendReplacing(previousId: pendingMessage.id, newMessage: message)
-    } catch {
-      let message = Message(id: pendingMessage.id, text: messageText, sender: .you, state: .failedToSend)
-      appendReplacing(previousId: pendingMessage.id, newMessage: message)
-    }
+    await sendMessage(message: pendingMessage)
   }
   
   private func appendReplacing(previousId: String?, newMessage: Message) {
@@ -164,5 +157,27 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   func retry(message: Message) async {
+    await sendMessage(message: message)
+  }
+  
+  private func sendMessage(message: Message) async {
+    do {
+      let messageId = try await service.sendMessage(text: message.text)
+      let createdMessage = Message(
+        id: messageId,
+        text: message.text,
+        sender: .you,
+        state: .sent("09:00")
+      )
+      appendReplacing(previousId: message.id, newMessage: createdMessage)
+    } catch {
+      let failedMessage = Message(
+        id: message.id,
+        text: message.text,
+        sender: .you,
+        state: .failedToSend
+      )
+      appendReplacing(previousId: message.id, newMessage: failedMessage)
+    }
   }
 }

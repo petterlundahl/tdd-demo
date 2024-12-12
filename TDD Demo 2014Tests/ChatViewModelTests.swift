@@ -353,16 +353,23 @@ struct ChatViewModelTests {
         return
       }
       
+      // Reset the previously collected states:
+      environment.observedStates.removeAll()
       service.sendMessageError = nil
       service.sentMessageIdStub = "1"
       await sut.retry(message: failedMessage)
     default: Issue.record("Unexpected state: \(lastState)")
     }
     
-    // Then the message should be sent
-    #expect(sut.state == .active(.completed, [.init(header: "Today", messages: [
-      .init(id: "1", text: "Failing message", sender: .you, state: .sent("09:00"))
-    ])]))
+    // Then the message should first be sending, then sent
+    #expect(environment.observedStates == [
+      .active(.completed, [.init(header: "Today", messages: [
+        .init(id: "sending-1", text: "Failing message", sender: .you, state: .sending)
+      ])]),
+      .active(.completed, [.init(header: "Today", messages: [
+        .init(id: "1", text: "Failing message", sender: .you, state: .sent("09:00"))
+      ])])
+    ])
     #expect(service.sentMessageText == "Failing message")
   }
   
@@ -370,7 +377,8 @@ struct ChatViewModelTests {
   // Use the current time when sending a Message
   // Messages over a year old should include year in header
   // When sending the first message Today, the Today group should be added
-  
+  // When sending a message, the loading state should be unchanged
+  // When text is empty, nothing should be sent
 }
 
 extension Date {

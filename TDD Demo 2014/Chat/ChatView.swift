@@ -30,7 +30,7 @@ struct ChatView<ViewModel: ChatViewModel>: View {
               Text(group.header)
               ForEach(group.messages) { message in
                 ChatMessageView(message: message) {
-                  Task { await viewModel.sendMessage() }
+                  Task { await viewModel.retry(message: message) }
                 }
               }
             }
