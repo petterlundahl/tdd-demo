@@ -28,7 +28,7 @@ struct ChatViewModelTests {
     service = MockService()
     sut = SUT(
       service: service,
-      currentDate: .makeDate("2025-01-05 09:00"),
+      currentDate: { .makeDate("2025-01-05 09:00") },
       currentTimeZone: TimeZone.gmt
     )
   }
@@ -201,39 +201,60 @@ struct ChatViewModelTests {
     #expect(sut.state == expectedState)
   }
   
-   @Test("When loading the next page fails, page number is not increased until after loading succeeds") func testLoadMorePagesWithErrorsCheckingPageNumber() async throws {
-     // Given
-     service.responseStub = .init(moreExists: true, messages: [
-       .init(id: "2", text: "Latest Message", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
-     ])
-     
-     await sut.loadNext()
-     
-     service.loadError = URLError(.timedOut)
-     
-     // Trying to reload multiple times, with errors
-     await sut.loadNext()
-     await sut.loadNext()
-     await sut.loadNext()
-     
-     service.loadError = nil
-     service.responseStub = .init(moreExists: false, messages: [
-       .init(id: "1", text: "Oldest Message", dateTime: "2025-01-05T07:15:19Z", sender: nil)
-     ])
-     
-     // When
-     await sut.loadNext()
-     
-     // Then
-     let expectedState = ViewState.active(.completed, [
-       .init(header: "Today", messages: [
+  @Test("When loading the next page fails, page number is not increased until after loading succeeds") func testLoadMorePagesWithErrorsCheckingPageNumber() async throws {
+    // Given
+    service.responseStub = .init(moreExists: true, messages: [
+      .init(id: "2", text: "Latest Message", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
+    ])
+    
+    await sut.loadNext()
+    
+    service.loadError = URLError(.timedOut)
+    
+    // Trying to reload multiple times, with errors
+    await sut.loadNext()
+    await sut.loadNext()
+    await sut.loadNext()
+    
+    service.loadError = nil
+    service.responseStub = .init(moreExists: false, messages: [
+      .init(id: "1", text: "Oldest Message", dateTime: "2025-01-05T07:15:19Z", sender: nil)
+    ])
+    
+    // When
+    await sut.loadNext()
+    
+    // Then
+    let expectedState = ViewState.active(.completed, [
+      .init(header: "Today", messages: [
         Message(id: "1", text: "Oldest Message", sender: .you, state: .sent("07:15")),
         Message(id: "2", text: "Latest Message", sender: .other("Alice"), state: .sent("07:16"))
-       ])
-     ])
-     #expect(sut.state == expectedState)
-     #expect(service.requestedPages == [1, 2, 2, 2, 2])
-   }
+      ])
+    ])
+    #expect(sut.state == expectedState)
+    #expect(service.requestedPages == [1, 2, 2, 2, 2])
+  }
+  
+  @Test("When sending a message, Then typingMessage is cleared, And the message is sent") func testSendMessageSuccess() async throws {
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [simpleMessage])
+    service.sentMessageIdStub = "2"
+    await sut.loadNext()
+    sut.typingMessage = "Heeey!"
+    
+    // When
+    await sut.sendMessage()
+    
+    // Then
+    #expect(sut.typingMessage == "")
+    #expect(service.sentMessageText == "Heeey!")
+    #expect(sut.state == .active(.completed, [
+      .init(header: "Today", messages: [
+        .init(id: "1", text: "Hello!", sender: .other("Alice"), state: .sent("08:30")),
+        .init(id: "2", text: "Heeey!", sender: .you, state: .sent("09:00"))
+      ])
+    ]))
+  }
   
 }
 
@@ -249,16 +270,23 @@ private final class MockService: ChatServicing {
   var loadError: Error?
   var responseStub: MessagesResponse?
   var requestedPages: [Int] = []
+  var sendMessageError: Error?
+  var sentMessageText: String?
+  var sentMessageIdStub: String?
   
   func loadMessages(pageNumber: Int) async throws -> MessagesResponse {
     requestedPages.append(pageNumber)
     if let loadError { throw loadError }
     if let responseStub { return responseStub }
-    Issue.record("Response was not stubbed")
+    Issue.record("loadMessages() response was not stubbed")
     throw URLError(.timedOut)
   }
   
-  func sendMessage(text: String) async throws {
-    
+  func sendMessage(text: String) async throws -> String {
+    sentMessageText = text
+    if let sendMessageError { throw sendMessageError }
+    if let sentMessageIdStub { return sentMessageIdStub }
+    Issue.record("sendMessage() response was not stubbed")
+    throw URLError(.timedOut)
   }
 }

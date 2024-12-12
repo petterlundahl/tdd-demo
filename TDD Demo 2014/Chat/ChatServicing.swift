@@ -22,5 +22,5 @@ struct MessagesResponse: Decodable {
 
 protocol ChatServicing {
   func loadMessages(pageNumber: Int) async throws -> MessagesResponse
-  func sendMessage(text: String) async throws
+  func sendMessage(text: String) async throws -> String
 }

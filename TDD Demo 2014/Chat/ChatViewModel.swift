@@ -41,18 +41,18 @@ final class ChatViewModelLive: ChatViewModel {
   @Published var typingMessage: String = ""
   
   private let service: ChatServicing
-  private let currentDate: Date
-  private let currentTimeZone: TimeZone
+  private let currentDate: () -> Date
+  private let dateFormatter: ChatDateFormatter
   private var nextPageNumber = 1
   
   init(
     service: ChatServicing,
-    currentDate: Date = Date.now,
+    currentDate: @escaping () -> Date = { Date.now },
     currentTimeZone: TimeZone = TimeZone.current
   ) {
     self.service = service
     self.currentDate = currentDate
-    self.currentTimeZone = currentTimeZone
+    self.dateFormatter = ChatDateFormatter(currentDate: currentDate, currentTimeZone: currentTimeZone)
   }
   
   func loadNext() async {
@@ -64,49 +64,54 @@ final class ChatViewModelLive: ChatViewModel {
       if response.messages.isEmpty {
         state = .noContent
       } else {
-        var messageAndDays = response.messages.map { message in messageAndDay(from: message) }
-        
-        var currentGroups = currentMessageGroups
-        if let oldestExistingGroup = currentGroups.first {
-          let newMessagesToAdd = messageAndDays.filter { (message, day) in oldestExistingGroup.header == day }
-            .map { message, _ in message }
-          var copy = oldestExistingGroup.messages
-          copy.insert(contentsOf: newMessagesToAdd, at: 0)
-          currentGroups.removeFirst()
-          currentGroups.insert(ViewState.MessageGroup(header: oldestExistingGroup.header, messages: copy), at: 0)
-          messageAndDays.removeFirst(newMessagesToAdd.count)
-        }
-        
-        var currentDay: String = ""
-        var messagesInCurrentDay: [Message] = []
-        var newGroups: [ViewState.MessageGroup] = []
-        
-        for (message, day) in messageAndDays {
-          if day == currentDay {
-            messagesInCurrentDay.append(message)
-          } else {
-            if !messagesInCurrentDay.isEmpty {
-              newGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
-            }
-            currentDay = day
-            messagesInCurrentDay = [message]
-          }
-        }
-        if !messagesInCurrentDay.isEmpty {
-          newGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
-        }
-        
-        currentGroups.insert(contentsOf: newGroups, at: 0)
+        let messageGroups = createGroups(fromLoadedMessages: response.messages)
         
         if response.moreExists {
-          state = .active(.canLoadMore, currentGroups)
+          state = .active(.canLoadMore, messageGroups)
         } else {
-          state = .active(.completed, currentGroups)
+          state = .active(.completed, messageGroups)
         }
       }
     } catch {
       state = .active(.error("Something went wrong"), currentMessageGroups)
     }
+  }
+  
+  private func createGroups(fromLoadedMessages messages: [MessagesResponse.Message]) -> [ViewState.MessageGroup] {
+    var messageAndDays = messages.map { message in messageAndDay(from: message) }
+    
+    var currentGroups = currentMessageGroups
+    if let oldestExistingGroup = currentGroups.first {
+      let newMessagesToAdd = messageAndDays.filter { (message, day) in oldestExistingGroup.header == day }
+        .map { message, _ in message }
+      var copy = oldestExistingGroup.messages
+      copy.insert(contentsOf: newMessagesToAdd, at: 0)
+      currentGroups.removeFirst()
+      currentGroups.insert(ViewState.MessageGroup(header: oldestExistingGroup.header, messages: copy), at: 0)
+      messageAndDays.removeFirst(newMessagesToAdd.count)
+    }
+    
+    var currentDay: String = ""
+    var messagesInCurrentDay: [Message] = []
+    var newGroups: [ViewState.MessageGroup] = []
+    
+    for (message, day) in messageAndDays {
+      if day == currentDay {
+        messagesInCurrentDay.append(message)
+      } else {
+        if !messagesInCurrentDay.isEmpty {
+          newGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
+        }
+        currentDay = day
+        messagesInCurrentDay = [message]
+      }
+    }
+    if !messagesInCurrentDay.isEmpty {
+      newGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
+    }
+    
+    currentGroups.insert(contentsOf: newGroups, at: 0)
+    return currentGroups
   }
   
   private var currentMessageGroups: [ViewState.MessageGroup] {
@@ -117,42 +122,31 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   private func messageAndDay(from message: MessagesResponse.Message) -> (Message, String) {
-    let (day, time) = dateComponents(from: message.dateTime)
+    let dateComponents = dateFormatter.dateComponents(from: message.dateTime)
     let sender: Message.Sender = (message.sender != nil) ? .other(message.sender!) : .you
-    let result = Message(id: message.id, text: message.text, sender: sender, state: .sent(time))
-    return (result, day)
+    let result = Message(id: message.id, text: message.text, sender: sender, state: .sent(dateComponents.timeOfDay))
+    return (result, dateComponents.day)
   }
   
-  private func dateComponents(from iso8601String: String) -> (String, String) {
-    let isoFormatter = ISO8601DateFormatter()
-    let displayDateFormatter = DateFormatter()
-    let displayTimeFormatter = DateFormatter()
-    
-    // Define date and time output formats
-    displayDateFormatter.dateFormat = "d MMMM" // E.g., "24 December"
-    displayDateFormatter.timeZone = currentTimeZone
-    
-    displayTimeFormatter.dateFormat = "HH:mm" // E.g., "14:30"
-    displayTimeFormatter.timeZone = currentTimeZone
-    
-    // Parse the ISO 8601 date string
-    guard let date = isoFormatter.date(from: iso8601String) else {
-      fatalError()
+  func sendMessage() async {
+    let messageText = typingMessage
+    typingMessage = ""
+    do {
+      let messageId = try await service.sendMessage(text: messageText)
+      let message = Message(id: messageId, text: messageText, sender: .you, state: .sent("09:00"))
+      var currentGroups = currentMessageGroups
+      if let mostRecentGroup = currentGroups.last {
+        var messages = mostRecentGroup.messages
+        messages.append(message)
+        currentGroups.removeLast()
+        currentGroups.append(.init(header: mostRecentGroup.header, messages: messages))
+        self.state = .active(.completed, currentGroups)
+      }
+    } catch {
+      
     }
-    // Format the date and time
-    var formattedDate = displayDateFormatter.string(from: date)
-    let formattedTime = displayTimeFormatter.string(from: date)
-    
-    if (displayDateFormatter.string(from: currentDate) ?? "") == formattedDate {
-      formattedDate = "Today"
-    }
-    
-    return (formattedDate, formattedTime)
   }
   
-  func sendMessage() {
-  }
-  
-  func retry(message: Message) {
+  func retry(message: Message) async {
   }
 }
