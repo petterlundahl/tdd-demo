@@ -12,10 +12,11 @@ struct MessagesResponse: Decodable {
   
   struct Message: Decodable {
     let id: String
+    /// The message text
     let text: String
     /// ISO 8601 Date Format YYYY-MM-DDTHH:mm:ssZ
     let dateTime: String
-    /// `nil` if from current user
+    /// `nil` if from current user, otherwise the first name of the user sending the message
     let sender: String?
   }
 }
