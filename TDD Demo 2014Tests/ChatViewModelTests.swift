@@ -44,7 +44,7 @@ struct ChatViewModelTests {
   
   @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [])
+    service.loadingResponse = .ok(.init(moreExists: false, messages: []))
     
     // When
     await sut.loadNext()
@@ -55,7 +55,7 @@ struct ChatViewModelTests {
   
   @Test("When one page of messages exist, Then state is active with loading completed") func testLoadFirstAndOnlyPage() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [simpleMessage])
+    service.loadingResponse = .ok(.init(moreExists: false, messages: [simpleMessage]))
     
     // When
     await sut.loadNext()
@@ -70,7 +70,7 @@ struct ChatViewModelTests {
   
   @Test("When more than one page exists, Then state is active and more can be loaded after first load") func testLoadFirstOfManyPages() async throws {
     // Given
-    service.responseStub = .init(moreExists: true, messages: [simpleMessage])
+    service.loadingResponse = .ok(.init(moreExists: true, messages: [simpleMessage]))
     
     // When
     await sut.loadNext()
@@ -85,7 +85,7 @@ struct ChatViewModelTests {
   
   @Test("State changes to loading before completed") func testStateChanges() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [simpleMessage])
+    service.loadingResponse = .ok(.init(moreExists: false, messages: [simpleMessage]))
     
     // When
     await sut.loadNext()
@@ -102,7 +102,7 @@ struct ChatViewModelTests {
   
   @Test("When loading fails, Then state is error") func testLoadError() async throws {
     // Given
-    service.loadError = URLError(.timedOut)
+      service.loadingResponse = .failWith(URLError(.timedOut))
     
     // When
     await sut.loadNext()
@@ -113,13 +113,13 @@ struct ChatViewModelTests {
   
   @Test("Messages can be grouped by date, with correct time of day and sender") func testLoadMany() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [
+    service.loadingResponse = .ok(.init(moreExists: false, messages: [
       .init(id: "1", text: "Merry Christmas!", dateTime: "2024-12-24T14:45:17Z", sender: "Alice"),
       .init(id: "2", text: "You too!", dateTime: "2024-12-24T14:58:19Z", sender: nil),
       .init(id: "3", text: "Happy new year!", dateTime: "2024-12-31T23:58:07Z", sender: "Bob"),
       .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil),
       .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice"),
-    ])
+    ]))
     
     // When
     await sut.loadNext()
@@ -143,27 +143,27 @@ struct ChatViewModelTests {
   
   @Test("When loading more pages, then older messages are added to the list, and page number is incremented") func testLoadMorePages() async throws {
     // Given
-    service.responseStub = .init(moreExists: true, messages: [
+    service.loadingResponse = .ok(.init(moreExists: true, messages: [
       .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil),
       .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
-    ])
+    ]))
     
     // When
     await sut.loadNext()
     
     // Given
-    service.responseStub = .init(moreExists: true, messages: [
+    service.loadingResponse = .ok(.init(moreExists: true, messages: [
       .init(id: "2", text: "You too!", dateTime: "2024-12-24T14:58:19Z", sender: nil),
       .init(id: "3", text: "Happy new year!", dateTime: "2024-12-31T23:58:07Z", sender: "Bob")
-    ])
+    ]))
     
     // When
     await sut.loadNext()
     
     // Given
-    service.responseStub = .init(moreExists: false, messages: [
+    service.loadingResponse = .ok(.init(moreExists: false, messages: [
       .init(id: "1", text: "Merry Christmas!", dateTime: "2024-12-24T14:45:17Z", sender: "Alice")
-    ])
+    ]))
     
     // When
     await sut.loadNext()
@@ -188,11 +188,11 @@ struct ChatViewModelTests {
   
   @Test("When loading the second page fails, previously loaded messages are not changed, and the state is error") func testLoadMorePagesWithErrors() async throws {
     // Given
-    service.responseStub = .init(moreExists: true, messages: [
+    service.loadingResponse = .ok(.init(moreExists: true, messages: [
       .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
-    ])
+    ]))
     await sut.loadNext()
-    service.loadError = URLError(.timedOut)
+    service.loadingResponse = .failWith(URLError(.timedOut))
     
     // When
     await sut.loadNext()
@@ -208,23 +208,22 @@ struct ChatViewModelTests {
   
   @Test("When loading the next page fails, page number is not increased until after loading succeeds") func testLoadMorePagesWithErrorsCheckingPageNumber() async throws {
     // Given
-    service.responseStub = .init(moreExists: true, messages: [
+    service.loadingResponse = .ok(.init(moreExists: true, messages: [
       .init(id: "2", text: "Latest Message", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
-    ])
+    ]))
     
     await sut.loadNext()
     
-    service.loadError = URLError(.timedOut)
+    service.loadingResponse = .failWith(URLError(.timedOut))
     
     // Trying to reload multiple times, with errors
     await sut.loadNext()
     await sut.loadNext()
     await sut.loadNext()
     
-    service.loadError = nil
-    service.responseStub = .init(moreExists: false, messages: [
+    service.loadingResponse = .ok(.init(moreExists: false, messages: [
       .init(id: "1", text: "Oldest Message", dateTime: "2025-01-05T07:15:19Z", sender: nil)
-    ])
+    ]))
     
     // When
     await sut.loadNext()
@@ -242,8 +241,8 @@ struct ChatViewModelTests {
   
   @Test("When sending a message, Then typingMessage is cleared, And the message is sent") func testSendMessageSuccess() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [simpleMessage])
-    service.sentMessageIdStub = "2"
+    service.loadingResponse = .ok(.init(moreExists: false, messages: [simpleMessage]))
+    service.sendingResponse = .ok("2")
     await sut.loadNext()
     
     // When
@@ -252,7 +251,7 @@ struct ChatViewModelTests {
     
     // Then
     #expect(sut.typingMessage == "")
-    #expect(service.sentMessageText == "Heeey!")
+    #expect(service.sentMessageTexts == ["Heeey!"])
     #expect(sut.state == .active(.completed, [
       .init(header: "Today", messages: [
         .init(id: "1", text: "Hello!", sender: .other("Alice"), state: .sent("08:30")),
@@ -263,8 +262,8 @@ struct ChatViewModelTests {
   
   @Test("When sending a message, Then it's state is sending before finally being sent") func testSendingMessage() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [])
-    service.sentMessageIdStub = "1"
+    service.loadingResponse = .ok(.init(moreExists: false, messages: []))
+    service.sendingResponse = .ok("1")
     await sut.loadNext()
     
     // When
@@ -287,8 +286,8 @@ struct ChatViewModelTests {
   
   @Test("When sending a message fails, Then it's state is failed") func testSendingMessageFailed() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [])
-    service.sendMessageError = URLError(.networkConnectionLost)
+    service.loadingResponse = .ok(.init(moreExists: false, messages: []))
+    service.sendingResponse = .failWith(URLError(.networkConnectionLost))
     await sut.loadNext()
     
     // When
@@ -305,14 +304,14 @@ struct ChatViewModelTests {
   
   @Test("When sending multiple messages, the temporary message IDs are generated uniquely") func testSendingMessageFailedWithUniqueID() async throws {
     // Given
-    service.responseStub = .init(moreExists: false, messages: [])
-    service.sentMessageIdStub = "1"
+    service.loadingResponse = .ok(.init(moreExists: false, messages: []))
+    service.sendingResponse = .ok("1")
     await sut.loadNext()
     
     // When
     sut.typingMessage = "First"
     await sut.sendMessage()
-    service.sentMessageIdStub = "2"
+    service.sendingResponse = .ok("2")
     sut.typingMessage = "Second"
     // Reset the previously collected states:
     environment.observedStates.removeAll()
@@ -334,8 +333,8 @@ struct ChatViewModelTests {
   
   @Test("When retrying to send a failed message, Then it can be sent") func testResendingFailedMessage() async throws {
     // Given that the message fails to send
-    service.responseStub = .init(moreExists: false, messages: [])
-    service.sendMessageError = URLError(.timedOut)
+    service.loadingResponse = .ok(.init(moreExists: false, messages: []))
+    service.sendingResponse = .failWith(URLError(.timedOut))
     await sut.loadNext()
     sut.typingMessage = "Failing message"
     await sut.sendMessage()
@@ -355,8 +354,7 @@ struct ChatViewModelTests {
       
       // Reset the previously collected states:
       environment.observedStates.removeAll()
-      service.sendMessageError = nil
-      service.sentMessageIdStub = "1"
+      service.sendingResponse = .ok("1")
       await sut.retry(message: failedMessage)
     default: Issue.record("Unexpected state: \(lastState)")
     }
@@ -370,7 +368,7 @@ struct ChatViewModelTests {
         .init(id: "1", text: "Failing message", sender: .you, state: .sent("09:00"))
       ])])
     ])
-    #expect(service.sentMessageText == "Failing message")
+    #expect(service.sentMessageTexts == ["Failing message", "Failing message"])
   }
   
   // TODO:
@@ -390,26 +388,36 @@ extension Date {
 }
 
 private final class MockService: ChatServicing {
-  var loadError: Error?
-  var responseStub: MessagesResponse?
+  
+  enum LoadResponse {
+    case ok(MessagesResponse)
+    case failWith(Error)
+  }
+  
+  enum SendResponse {
+    case ok(String)
+    case failWith(Error)
+  }
+  
+  var loadingResponse: LoadResponse = .failWith(URLError(.timedOut))
+  var sendingResponse: SendResponse = .failWith(URLError(.timedOut))
+  
   var requestedPages: [Int] = []
-  var sendMessageError: Error?
-  var sentMessageText: String?
-  var sentMessageIdStub: String?
+  var sentMessageTexts: [String] = []
   
   func loadMessages(pageNumber: Int) async throws -> MessagesResponse {
     requestedPages.append(pageNumber)
-    if let loadError { throw loadError }
-    if let responseStub { return responseStub }
-    Issue.record("loadMessages() response was not stubbed")
-    throw URLError(.timedOut)
+    switch loadingResponse {
+    case .ok(let messagesResponse): return messagesResponse
+    case .failWith(let error): throw error
+    }
   }
   
   func sendMessage(text: String) async throws -> String {
-    sentMessageText = text
-    if let sendMessageError { throw sendMessageError }
-    if let sentMessageIdStub { return sentMessageIdStub }
-    Issue.record("sendMessage() response was not stubbed")
-    throw URLError(.timedOut)
+    sentMessageTexts.append(text)
+    switch sendingResponse {
+    case .ok(let messagesId): return messagesId
+    case .failWith(let error): throw error
+    }
   }
 }
