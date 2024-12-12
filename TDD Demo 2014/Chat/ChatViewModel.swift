@@ -43,6 +43,7 @@ final class ChatViewModelLive: ChatViewModel {
   private let service: ChatServicing
   private let dateFormatter: ChatDateFormatter
   private var nextPageNumber = 1
+  private var nextPendingMessageId = 1
   
   init(
     service: ChatServicing,
@@ -132,7 +133,8 @@ final class ChatViewModelLive: ChatViewModel {
   func sendMessage() async {
     let messageText = typingMessage
     typingMessage = ""
-    let pendingMessage = Message(id: "sending-1", text: messageText, sender: .you, state: .sending)
+    let pendingMessage = Message(id: "sending-\(nextPendingMessageId)", text: messageText, sender: .you, state: .sending)
+    nextPendingMessageId += 1
     appendReplacing(previousId: nil, newMessage: pendingMessage)
     do {
       let messageId = try await service.sendMessage(text: messageText)
