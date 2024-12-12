@@ -133,10 +133,10 @@ final class ChatViewModelLive: ChatViewModel {
   func sendMessage() async {
     let messageText = typingMessage
     typingMessage = ""
-    let pendingMessage = Message(id: "sending-\(nextPendingMessageId)", text: messageText, sender: .you, state: .sending)
+    let sendingMessage = Message(id: "sending-\(nextPendingMessageId)", text: messageText, sender: .you, state: .sending)
     nextPendingMessageId += 1
-    appendReplacing(previousId: nil, newMessage: pendingMessage)
-    await sendMessage(message: pendingMessage)
+    appendReplacing(previousId: nil, newMessage: sendingMessage)
+    await sendMessage(message: sendingMessage)
   }
   
   private func appendReplacing(previousId: String?, newMessage: Message) {
@@ -157,6 +157,8 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   func retry(message: Message) async {
+    let sendingMessage = Message(id: message.id, text: message.text, sender: .you, state: .sending)
+    appendReplacing(previousId: message.id, newMessage: sendingMessage)
     await sendMessage(message: message)
   }
   
