@@ -240,9 +240,9 @@ struct ChatViewModelTests {
     service.responseStub = .init(moreExists: false, messages: [simpleMessage])
     service.sentMessageIdStub = "2"
     await sut.loadNext()
-    sut.typingMessage = "Heeey!"
     
     // When
+    sut.typingMessage = "Heeey!"
     await sut.sendMessage()
     
     // Then
@@ -263,9 +263,9 @@ struct ChatViewModelTests {
     var observedStates: [ViewState] = []
     let sink = sut.$state.sink { observedStates.append($0) }
     await sut.loadNext()
-    sut.typingMessage = "Heeey!"
     
     // When
+    sut.typingMessage = "Heeey!"
     await sut.sendMessage()
     
     // Then
@@ -282,6 +282,24 @@ struct ChatViewModelTests {
     ])
     
     sink.cancel()
+  }
+  
+  @Test("When sending a message fails, Then it's state is failed") func testSendingMessageFailed() async throws {
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [])
+    service.sendMessageError = URLError(.networkConnectionLost)
+    await sut.loadNext()
+    
+    // When
+    sut.typingMessage = "Heeey!"
+    await sut.sendMessage()
+    
+    // Then
+    #expect(sut.state == .active(.completed, [
+      .init(header: "Today", messages: [
+        .init(id: "sending-1", text: "Heeey!", sender: .you, state: .failedToSend)
+      ])
+    ]))
   }
   
 }

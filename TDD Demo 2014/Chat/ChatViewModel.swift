@@ -132,14 +132,15 @@ final class ChatViewModelLive: ChatViewModel {
   func sendMessage() async {
     let messageText = typingMessage
     typingMessage = ""
+    let pendingMessage = Message(id: "sending-1", text: messageText, sender: .you, state: .sending)
+    appendReplacing(previousId: nil, newMessage: pendingMessage)
     do {
-      let pendingMessage = Message(id: "sending-1", text: messageText, sender: .you, state: .sending)
-      appendReplacing(previousId: nil, newMessage: pendingMessage)
       let messageId = try await service.sendMessage(text: messageText)
       let message = Message(id: messageId, text: messageText, sender: .you, state: .sent("09:00"))
       appendReplacing(previousId: pendingMessage.id, newMessage: message)
     } catch {
-      
+      let message = Message(id: pendingMessage.id, text: messageText, sender: .you, state: .failedToSend)
+      appendReplacing(previousId: pendingMessage.id, newMessage: message)
     }
   }
   
