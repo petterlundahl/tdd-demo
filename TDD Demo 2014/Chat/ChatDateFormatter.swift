@@ -25,7 +25,6 @@ struct ChatDateFormatter {
     self.currentDate = currentDate
     dayFormatter.timeZone = currentTimeZone
     timeOfDayFormatter.timeZone = currentTimeZone
-    // E.g., "24 December"
     dayFormatter.dateFormat = "d MMMM"
     timeOfDayFormatter.dateFormat = "HH:mm"
   }
@@ -36,7 +35,7 @@ struct ChatDateFormatter {
     }
     var day = dayFormatter.string(from: date)
     let timeOfDay = timeOfDayFormatter.string(from: date)
-    let todayDate = dayFormatter.string(from: currentDate()) ?? ""
+    let todayDate = dayFormatter.string(from: currentDate())
     
     if todayDate == day {
       day = "Today"
@@ -46,6 +45,6 @@ struct ChatDateFormatter {
   }
   
   func timeOfDayNow() -> String {
-    dayFormatter.string(from: currentDate()) ?? "?"
+    dayFormatter.string(from: currentDate())
   }
 }
