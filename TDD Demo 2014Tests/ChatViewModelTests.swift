@@ -256,6 +256,34 @@ struct ChatViewModelTests {
     ]))
   }
   
+  @Test("When sending a message, Then it's state is sending before finally being sent") func testSendingMessage() async throws {
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [])
+    service.sentMessageIdStub = "1"
+    var observedStates: [ViewState] = []
+    let sink = sut.$state.sink { observedStates.append($0) }
+    await sut.loadNext()
+    sut.typingMessage = "Heeey!"
+    
+    // When
+    await sut.sendMessage()
+    
+    // Then
+    #expect(observedStates == [
+      .idle,
+      .active(.loading, []),
+      .noContent,
+      .active(.completed, [.init(header: "Today", messages: [
+        .init(id: "sending-1", text: "Heeey!", sender: .you, state: .sending)
+      ])]),
+      .active(.completed, [.init(header: "Today", messages: [
+        .init(id: "1", text: "Heeey!", sender: .you, state: .sent("09:00"))
+      ])])
+    ])
+    
+    sink.cancel()
+  }
+  
 }
 
 extension Date {

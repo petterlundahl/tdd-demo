@@ -41,7 +41,6 @@ final class ChatViewModelLive: ChatViewModel {
   @Published var typingMessage: String = ""
   
   private let service: ChatServicing
-  private let currentDate: () -> Date
   private let dateFormatter: ChatDateFormatter
   private var nextPageNumber = 1
   
@@ -51,8 +50,10 @@ final class ChatViewModelLive: ChatViewModel {
     currentTimeZone: TimeZone = TimeZone.current
   ) {
     self.service = service
-    self.currentDate = currentDate
-    self.dateFormatter = ChatDateFormatter(currentDate: currentDate, currentTimeZone: currentTimeZone)
+    self.dateFormatter = ChatDateFormatter(
+      currentDate: currentDate,
+      currentTimeZone: currentTimeZone
+    )
   }
   
   func loadNext() async {
@@ -132,18 +133,30 @@ final class ChatViewModelLive: ChatViewModel {
     let messageText = typingMessage
     typingMessage = ""
     do {
+      let pendingMessage = Message(id: "sending-1", text: messageText, sender: .you, state: .sending)
+      appendReplacing(previousId: nil, newMessage: pendingMessage)
       let messageId = try await service.sendMessage(text: messageText)
       let message = Message(id: messageId, text: messageText, sender: .you, state: .sent("09:00"))
-      var currentGroups = currentMessageGroups
-      if let mostRecentGroup = currentGroups.last {
-        var messages = mostRecentGroup.messages
-        messages.append(message)
-        currentGroups.removeLast()
-        currentGroups.append(.init(header: mostRecentGroup.header, messages: messages))
-        self.state = .active(.completed, currentGroups)
-      }
+      appendReplacing(previousId: pendingMessage.id, newMessage: message)
     } catch {
       
+    }
+  }
+  
+  private func appendReplacing(previousId: String?, newMessage: Message) {
+    var currentGroups = currentMessageGroups
+    if let mostRecentGroup = currentGroups.last {
+      var messages = mostRecentGroup.messages
+      if let previousId {
+        messages.removeAll { $0.id == previousId }
+      }
+      messages.append(newMessage)
+      currentGroups.removeLast()
+      currentGroups.append(.init(header: mostRecentGroup.header, messages: messages))
+      self.state = .active(.completed, currentGroups)
+    } else {
+      let group = ViewState.MessageGroup(header: "Today", messages: [newMessage])
+      self.state = .active(.completed, [group])
     }
   }
   
