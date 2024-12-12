@@ -8,14 +8,21 @@
 import Testing
 @testable import TDD_Demo_2014
 import Foundation
+import Combine
 
 fileprivate typealias SUT = ChatViewModelLive
 
 @MainActor
 struct ChatViewModelTests {
   
+  final class Environment {
+    var observedStates: [ViewState] = []
+    var sink: Cancellable?
+  }
+  
   private let service: MockService
   private let sut: SUT
+  private let environment: Environment
   
   private let simpleMessage = MessagesResponse.Message(
     id: "1",
@@ -31,6 +38,8 @@ struct ChatViewModelTests {
       currentDate: { .makeDate("2025-01-05 09:00") },
       currentTimeZone: TimeZone.gmt
     )
+    environment = Environment()
+    environment.sink = sut.$state.sink { [weak environment] in environment?.observedStates.append($0) }
   }
   
   @Test("When no messages exist, Then state is noContent") func testNoContent() async throws {
@@ -77,22 +86,18 @@ struct ChatViewModelTests {
   @Test("State changes to loading before completed") func testStateChanges() async throws {
     // Given
     service.responseStub = .init(moreExists: false, messages: [simpleMessage])
-    var observedStates: [ViewState] = []
-    let sink = sut.$state.sink { observedStates.append($0) }
     
     // When
     await sut.loadNext()
     
     // Then
-    #expect(observedStates == [
+    #expect(environment.observedStates == [
       .idle,
       .active(.loading, []),
       .active(.completed, [.init(header: "Today", messages: [
         .init(id: "1", text: "Hello!", sender: .other("Alice"), state: .sent("08:30"))
       ])])
     ])
-    
-    sink.cancel()
   }
   
   @Test("When loading fails, Then state is error") func testLoadError() async throws {
@@ -260,8 +265,6 @@ struct ChatViewModelTests {
     // Given
     service.responseStub = .init(moreExists: false, messages: [])
     service.sentMessageIdStub = "1"
-    var observedStates: [ViewState] = []
-    let sink = sut.$state.sink { observedStates.append($0) }
     await sut.loadNext()
     
     // When
@@ -269,7 +272,7 @@ struct ChatViewModelTests {
     await sut.sendMessage()
     
     // Then
-    #expect(observedStates == [
+    #expect(environment.observedStates == [
       .idle,
       .active(.loading, []),
       .noContent,
@@ -280,8 +283,6 @@ struct ChatViewModelTests {
         .init(id: "1", text: "Heeey!", sender: .you, state: .sent("09:00"))
       ])])
     ])
-    
-    sink.cancel()
   }
   
   @Test("When sending a message fails, Then it's state is failed") func testSendingMessageFailed() async throws {
@@ -300,6 +301,35 @@ struct ChatViewModelTests {
         .init(id: "sending-1", text: "Heeey!", sender: .you, state: .failedToSend)
       ])
     ]))
+  }
+  
+  @Test("When sending multiple messages, the temporary message IDs are generated uniquely") func testSendingMessageFailedWithUniqueID() async throws {
+    // Given
+    service.responseStub = .init(moreExists: false, messages: [])
+    service.sentMessageIdStub = "1"
+    await sut.loadNext()
+    
+    // When
+    sut.typingMessage = "First"
+    await sut.sendMessage()
+    service.sentMessageIdStub = "2"
+    sut.typingMessage = "Second"
+    // Reset the previously collected states:
+    environment.observedStates.removeAll()
+    await sut.sendMessage()
+    
+    // Then
+    
+    #expect(environment.observedStates == [
+      .active(.completed, [.init(header: "Today", messages: [
+        .init(id: "1", text: "First", sender: .you, state: .sent("09:00")),
+        .init(id: "sending-2", text: "Second", sender: .you, state: .sending)
+      ])]),
+      .active(.completed, [.init(header: "Today", messages: [
+        .init(id: "1", text: "First", sender: .you, state: .sent("09:00")),
+        .init(id: "2", text: "Second", sender: .you, state: .sent("09:00"))
+      ])])
+    ])
   }
   
 }
