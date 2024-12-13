@@ -100,7 +100,7 @@ final class ChatViewModelLive: ChatViewModel {
       copy.insert(contentsOf: newMessagesToAdd, at: 0)
       currentGroups.removeFirst()
       currentGroups.insert(ViewState.MessageGroup(header: oldestExistingGroup.header, messages: copy), at: 0)
-      messagesAndDays.removeFirst(newMessagesToAdd.count)
+      messagesAndDays.removeLast(newMessagesToAdd.count)
     }
   }
   
