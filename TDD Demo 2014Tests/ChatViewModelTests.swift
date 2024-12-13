@@ -339,25 +339,16 @@ struct ChatViewModelTests {
     sut.typingMessage = "Failing message"
     await sut.sendMessage()
     
-    // When we retry the failing message
-    guard let lastState = environment.observedStates.last else {
-      Issue.record("Expected at least one state to be observed. 0 found")
+    guard let failedMessage = findNewestMessageInLatestState() else {
       return
     }
     
-    switch lastState {
-    case .active(_, let messageGroups):
-      guard let failedMessage = messageGroups.first?.messages.first else {
-        Issue.record("Expected one message to be published in state")
-        return
-      }
-      
-      // Reset the previously collected states:
-      environment.observedStates.removeAll()
-      service.sendingResponse = .ok("1")
-      await sut.retry(message: failedMessage)
-    default: Issue.record("Unexpected state: \(lastState)")
-    }
+    // Reset the previously collected states:
+    environment.observedStates.removeAll()
+    service.sendingResponse = .ok("1")
+    
+    // When we retry the failing message
+    await sut.retry(message: failedMessage)
     
     // Then the message should first be sending, then sent
     #expect(environment.observedStates == [
@@ -369,6 +360,24 @@ struct ChatViewModelTests {
       ])])
     ])
     #expect(service.sentMessageTexts == ["Failing message", "Failing message"])
+  }
+  
+  private func findNewestMessageInLatestState() -> Message? {
+    guard let lastState = environment.observedStates.last else {
+      Issue.record("Expected at least one state to be observed. 0 found")
+      return nil
+    }
+    
+    switch lastState {
+    case .active(_, let messageGroups):
+      guard let message = messageGroups.first?.messages.first else {
+        Issue.record("Expected one message to be published in state")
+        return nil
+      }
+      return message
+    default: Issue.record("Unexpected state: \(lastState)")
+    }
+    return nil
   }
   
   // TODO:
