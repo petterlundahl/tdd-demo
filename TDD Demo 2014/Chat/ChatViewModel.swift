@@ -80,24 +80,36 @@ final class ChatViewModelLive: ChatViewModel {
   }
   
   private func createGroups(fromLoadedMessages messages: [MessagesResponse.Message]) -> [ViewState.MessageGroup] {
-    var messageAndDays = messages.map { message in messageAndDay(from: message) }
+    var messagesAndDays = messages.map { message in messageAndDay(from: message) }
     
     var currentGroups = currentMessageGroups
+    insert(messagesAndDays: &messagesAndDays, inExistingGroups: &currentGroups)
+    let newGroups = createNewGroups(messagesAndDays: messagesAndDays)
+    currentGroups.insert(contentsOf: newGroups, at: 0)
+    return currentGroups
+  }
+  
+  private func insert(
+    messagesAndDays: inout [(Message, String)],
+    inExistingGroups currentGroups: inout [ViewState.MessageGroup]
+  ) {
     if let oldestExistingGroup = currentGroups.first {
-      let newMessagesToAdd = messageAndDays.filter { (message, day) in oldestExistingGroup.header == day }
+      let newMessagesToAdd = messagesAndDays.filter { (message, day) in oldestExistingGroup.header == day }
         .map { message, _ in message }
       var copy = oldestExistingGroup.messages
       copy.insert(contentsOf: newMessagesToAdd, at: 0)
       currentGroups.removeFirst()
       currentGroups.insert(ViewState.MessageGroup(header: oldestExistingGroup.header, messages: copy), at: 0)
-      messageAndDays.removeFirst(newMessagesToAdd.count)
+      messagesAndDays.removeFirst(newMessagesToAdd.count)
     }
-    
+  }
+  
+  private func createNewGroups(messagesAndDays: [(Message, String)]) -> [ViewState.MessageGroup] {
     var currentDay: String = ""
     var messagesInCurrentDay: [Message] = []
     var newGroups: [ViewState.MessageGroup] = []
     
-    for (message, day) in messageAndDays {
+    for (message, day) in messagesAndDays {
       if day == currentDay {
         messagesInCurrentDay.append(message)
       } else {
@@ -111,9 +123,7 @@ final class ChatViewModelLive: ChatViewModel {
     if !messagesInCurrentDay.isEmpty {
       newGroups.append(ViewState.MessageGroup(header: currentDay, messages: messagesInCurrentDay))
     }
-    
-    currentGroups.insert(contentsOf: newGroups, at: 0)
-    return currentGroups
+    return newGroups
   }
   
   private var currentMessageGroups: [ViewState.MessageGroup] {
