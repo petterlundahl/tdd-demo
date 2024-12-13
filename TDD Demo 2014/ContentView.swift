@@ -60,7 +60,7 @@ final class DemoService: ChatServicing {
     let totalMessages = messages.count
     
     // Calculate the range of messages for the given page
-    let endIndex = max(0, totalMessages - ((pageNumber - 1) * 5) - 1)
+    let endIndex = max(0, totalMessages - ((pageNumber - 1) * 5))
     let startIndex = max(0, endIndex - 5)
     
     // Return the slice of messages for this page

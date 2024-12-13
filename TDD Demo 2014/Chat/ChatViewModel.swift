@@ -136,14 +136,24 @@ final class ChatViewModelLive: ChatViewModel {
   private func messageAndDay(from message: MessagesResponse.Message) -> (Message, String) {
     let dateComponents = dateFormatter.dateComponents(from: message.dateTime)
     let sender: Message.Sender = (message.sender != nil) ? .other(message.sender!) : .you
-    let result = Message(id: message.id, text: message.text, sender: sender, state: .sent(dateComponents.timeOfDay))
+    let result = Message(
+      id: message.id,
+      text: message.text,
+      sender: sender,
+      state: .sent(dateComponents.timeOfDay)
+    )
     return (result, dateComponents.day)
   }
   
   func sendMessage() async {
     let messageText = typingMessage
     typingMessage = ""
-    let sendingMessage = Message(id: "sending-\(nextPendingMessageId)", text: messageText, sender: .you, state: .sending)
+    let sendingMessage = Message(
+      id: "sending-\(nextPendingMessageId)",
+      text: messageText,
+      sender: .you,
+      state: .sending
+    )
     nextPendingMessageId += 1
     appendReplacing(previousId: nil, newMessage: sendingMessage)
     await sendMessage(message: sendingMessage)
