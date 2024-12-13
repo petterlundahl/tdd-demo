@@ -144,8 +144,8 @@ struct ChatViewModelTests {
   @Test("When loading more pages, then older messages are added to the list, and page number is incremented") func testLoadMorePages() async throws {
     // Given
     service.loadingResponse = .ok(.init(moreExists: true, messages: [
-      .init(id: "4", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil),
-      .init(id: "5", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
+      .init(id: "5", text: "Hello guys!", dateTime: "2025-01-05T07:15:19Z", sender: nil),
+      .init(id: "6", text: "Hey Friend!", dateTime: "2025-01-05T07:16:19Z", sender: "Alice")
     ]))
     
     // When
@@ -154,7 +154,8 @@ struct ChatViewModelTests {
     // Given
     service.loadingResponse = .ok(.init(moreExists: true, messages: [
       .init(id: "2", text: "You too!", dateTime: "2024-12-24T14:58:19Z", sender: nil),
-      .init(id: "3", text: "Happy new year!", dateTime: "2024-12-31T23:58:07Z", sender: "Bob")
+      .init(id: "3", text: "Happy new year!", dateTime: "2024-12-31T23:58:07Z", sender: "Bob"),
+      .init(id: "4", text: "Good morning!", dateTime: "2025-01-05T07:11:19Z", sender: "Bob")
     ]))
     
     // When
@@ -178,8 +179,9 @@ struct ChatViewModelTests {
         Message(id: "3", text: "Happy new year!", sender: .other("Bob"), state: .sent("23:58"))
       ]),
       .init(header: "Today", messages: [
-        Message(id: "4", text: "Hello guys!", sender: .you, state: .sent("07:15")),
-        Message(id: "5", text: "Hey Friend!", sender: .other("Alice"), state: .sent("07:16"))
+        Message(id: "4", text: "Good morning!", sender: .other("Bob"), state: .sent("07:11")),
+        Message(id: "5", text: "Hello guys!", sender: .you, state: .sent("07:15")),
+        Message(id: "6", text: "Hey Friend!", sender: .other("Alice"), state: .sent("07:16"))
       ])
     ])
     #expect(sut.state == expectedState)
